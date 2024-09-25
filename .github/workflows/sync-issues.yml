@@ -1,0 +1,62 @@
+name: Sync Issues
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - development
+
+    paths-ignore:
+      - "**/total-rewards.json"
+  schedule:
+    - cron: "15 * * * *" # every hour at minute 15 (github recommends to set such cron jobs not at the start of an hour)
+
+jobs:
+  sync-issues:
+    name: Sync Issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20.10.0"
+
+      - name: Download Artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download -n twitterMap || true
+
+      - name: Yarn Install
+        run: yarn install --mode=skip-build
+
+      - name: Get GitHub App token
+        uses: tibdex/github-app-token@v1.7.0
+        id: get_installation_token
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Sync Issues
+        env:
+          DEVPOOL_GITHUB_API_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_KEY_SECRET: ${{ secrets.TWITTER_API_KEY_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+        run: npx tsx index.ts
+
+      - name: Delete Unauthorized Issues
+        run: npx tsx ./scripts/delete-unauthorized-issues.ts
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          OWNER_REPO: ${{ github.repository }}
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: twitterMap
+          path: twitterMap.json

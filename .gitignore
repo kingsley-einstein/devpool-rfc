@@ -1,0 +1,17 @@
+# dependencies
+node_modules
+
+.env
+.pnp.cjs
+.gitignore
+.yarn
+.pnp.loader.mjs
+.DS_Store
+
+coverage
+coverage.txt
+total-rewards.txt
+total-rewards.json
+junit.xml
+statistics.json
+test-script.ts
